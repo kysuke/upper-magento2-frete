@@ -22,12 +22,7 @@
           <label>Arquivo de transportadoras</label>
           <backend_model>\UpperSoftwares\Frete\Model\Config\Backend\CustomFileType</backend_model>
           <upload_dir config="system" scope_info="1">transpup</upload_dir>
-        </field>
-        <field id="frete_file_upload" translate="label" type="Magento\Config\Block\System\Config\Form\Field\File" sortOrder="6" showInDefault="1" showInWebsite="1" >
-          <label>Arquivo de fretes</label>
-          <backend_model>\UpperSoftwares\Frete\Model\Config\Backend\CustomFileType</backend_model>
-          <upload_dir config="system" scope_info="1">freteup</upload_dir>
-        </field>
+        </field>        
         <field id="handling_type" translate="label" type="select" sortOrder="7" showInDefault="1" showInWebsite="1" showInStore="0">
           <label>Calculate Handling Fee</label>
           <source_model>Magento\Shipping\Model\Source\HandlingType</source_model>

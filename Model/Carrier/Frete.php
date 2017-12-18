@@ -69,75 +69,79 @@ class Frete extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements
   */
   public function collectRates(RateRequest $request)
   {
-    if (!$this->getConfigFlag('active')) {
+    if (!$this->getConfigFlag('active'))
+    {
       return false;
     }
 
     /** @var \Magento\Shipping\Model\Rate\Result $result */
     $result = $this->_rateResultFactory->create();
 
-    /** @var \Magento\Quote\Model\Quote\Address\RateResult\Method $method */
-    $method = $this->_rateMethodFactory->create();
-
-    // $mediapath = $this->_filesystem->getDirectoryRead(DirectoryList::MEDIA)->getAbsolutePath();
-    // $arquivoFrete = file('');
-    // $arquivoTransp = readfile('pub/media/transpup/arquivotransp.json');
-    // $arquivoJsonFrete  = json_decode($arquivoFrete, true);
-    // $arquivoJsonTransp = json_decode($arquivoTransp, true);
-    //
-
-    foreach ($request->getAllItems() as $item) {
-      /**
-      * Set carrier's method data
-      */
-      $method->setCarrier($this->getCarrierCode());
-      $method->setCarrierTitle($this->getConfigData('title'));
-      // $method->setCarrierTitle($value);
-
-      $tipo = $item->getProductType();
-      if ($tipo == 'configurable') {
-        $product = $item->getProduct();
-        $json = $product->getJsonFrete();
-        $qty = $item->getQty();
-        $cep = str_replace("-","",$request->getDestPostcode());
-        $arrayJson = json_decode($json, true);
-        foreach ($arrayJson as $key => $value) {
-          $cepJson = explode("~",$key);
-          if ($cep >= $cepJson[0] && $cep <= $cepJson[1]) {
-            foreach ($value as $chave) {
-              $arrayTeste = $chave;
-            }
-          }
-        }
-
-        $limiteFrete = count($arrayTeste);
-        $calc = ceil($qty/$limiteFrete);
-        $arrayCalc = range(0,$calc - 1);
-        $valorTotal = 0;
-        foreach ($arrayCalc as $arrayIn) {
-          $qtyAux = 1;
-          if ($qty > ($limiteFrete * ($arrayIn + 1))) {
-            $qtyAux = $limiteFrete;
-          } else {
-            $qtyAux = $qty - ($limiteFrete * $arrayIn);
-          }
-          $qtdUso = $qtyAux;
-          $valorTotal = $valorTotal + $arrayTeste[$qtdUso];
-        }
-        /*you can fetch shipping price from different sources over some APIs, we used price from config.xml - xml node price*/
-        // $amount = $this->getConfigData('price');
-        /**
-        * Displayed as shipping method under Carrier
-        */
-        $method->setMethod($this->getCarrierCode());
-        $method->setMethodTitle($this->getConfigData('name'));
-
-        $method->setPrice($valorTotal);
-        $method->setCost($valorTotal);
-      }
+    if ($this->getConfigData('transp_file_upload') != "")
+    {
+      $transpFileUpload = BP."/pub/media/transpup/".$this->getConfigData('transp_file_upload');
+      $fileTransp = fopen($transpFileUpload, "r");
+      $jsonTransp = fread($fileTransp, filesize ($transpFileUpload));
+      fclose($fileTransp);
     }
 
-    $result->append($method);
+    $jsonTransp = json_decode($jsonTransp, true);
+
+    $cep = str_replace("-","",$request->getDestPostcode());
+
+    foreach ($jsonTransp as $key => $value)
+    {
+      $cepJson = explode("~",$key);
+      if ($cep >= $cepJson[0] && $cep <= $cepJson[1])
+      {
+        foreach ($value as $keyT => $transportadora)
+        {
+          /** @var \Magento\Quote\Model\Quote\Address\RateResult\Method $method */
+          $method = $this->_rateMethodFactory->create();
+          $valorTotal = 0;
+          foreach ($request->getAllItems() as $item)
+          {
+            /**
+            * Set carrier's method data
+            */
+            $method->setCarrier($this->getCarrierCode());
+            $method->setCarrierTitle($this->getConfigData("title"));
+
+            $tipo = $item->getProductType();
+            if ($tipo == 'configurable')
+            {
+              $product = $item->getProduct();
+              $json = $product->getJsonFrete();
+              $qty = $item->getQty();
+
+              $limiteFrete = count($transportadora[0]);
+              $calc = ceil($qty/$limiteFrete);
+              $arrayCalc = range(0,$calc - 1);
+              foreach ($arrayCalc as $arrayIn)
+              {
+                $qtyAux = 1;
+                if ($qty > ($limiteFrete * ($arrayIn + 1)))
+                {
+                  $qtyAux = $limiteFrete;
+                } else {
+                  $qtyAux = $qty - ($limiteFrete * $arrayIn);
+                }
+                $qtdUso = $qtyAux;
+                $valorTotal = $valorTotal + $transportadora[0][$qtdUso];
+              }
+            }
+          }
+
+          $method->setMethod($this->getCarrierCode());
+          $method->setMethodTitle($keyT);
+
+          $method->setPrice($valorTotal);
+          $method->setCost($valorTotal);
+
+          $result->append($method);
+        }
+      }
+    }
 
     return $result;
   }
